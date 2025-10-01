@@ -14,5 +14,13 @@
     "password": "$2b$10$oY9Txpl9QgCKiCU9kjiwhOCAAATLG0nbzwBThApiMH2JfjPYGI9zy",
     "createdAt": "2025-10-01T08:01:16.739Z",
     "notifications": true
+  },
+  {
+    "id": "1759340892142",
+    "username": "Tu papá",
+    "email": "nauroy71106@gmail.com",
+    "password": "$2b$10$b1C3oWrvGCSjl89ePwVLv.8nLTaClXsreLnyCxbYXSy9Y0voAScUq",
+    "createdAt": "2025-10-01T17:48:12.142Z",
+    "notifications": true
   }
 ]
