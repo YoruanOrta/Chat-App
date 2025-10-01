@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1759304239959",
+    "username": "Gaby",
+    "email": "aurepgst@gmail.com",
+    "password": "$2b$10$wpMss/lvK1ShVexW6wGuP.HavRtEhPhXtC8InBRpPot7i9BYkyqTC",
+    "createdAt": "2025-10-01T07:37:19.959Z",
+    "notifications": true
+  },
+  {
+    "id": "1759305676739",
+    "username": "Supaah",
+    "email": "aureliopagan6@gmail.com",
+    "password": "$2b$10$oY9Txpl9QgCKiCU9kjiwhOCAAATLG0nbzwBThApiMH2JfjPYGI9zy",
+    "createdAt": "2025-10-01T08:01:16.739Z",
+    "notifications": true
+  }
+]

@@ -1,61 +1,97 @@
-import { takeEvery, all } from 'redux-saga/effects';
-import { ADD_MESSAGE, ADD_USER, messageReceived, usersList } from '../actions';
+import { takeEvery } from 'redux-saga/effects';
+import { ADD_MESSAGE, messageReceived, usersList } from '../actions';
 
-const socket = setupSocket();
+let ws = null;
+let dispatch = null;
+let isConnected = false;
 
-function* handleNewMessage(action) {
-  socket.emit('message', {
-    message: action.message,
-    author: action.author
-  });
-}
-
-function* handleNewUser(action) {
-  socket.emit('username', {
-    name: action.name
-  });
-}
-
-export function setupSocket() {
-  const socket = new WebSocket('ws://localhost:8989');
+function connectSocket() {
+  ws = new WebSocket('ws://localhost:8989');
   
-  return {
-    on: (event, callback) => {
-      socket.addEventListener('message', (e) => {
-        const data = JSON.parse(e.data);
-        if (data.type === event) {
-          callback(data.payload);
-        }
-      });
-    },
-    emit: (event, data) => {
-      socket.send(JSON.stringify({ type: event, payload: data }));
+  ws.onopen = () => {
+    console.log('Connected');
+    isConnected = true;
+  };
+  
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    
+    if (data.type === 'message') {
+      dispatch(messageReceived(data.payload.message, data.payload.author));
     }
+    if (data.type === 'users') {
+      dispatch(usersList(data.payload));
+    }
+    if (data.type === 'admin_status') {
+      dispatch({ type: 'SET_ADMIN_STATUS', payload: data.payload.isAdmin });
+    }
+    if (data.type === 'clear_messages') {
+      dispatch({ type: 'CLEAR_ALL_MESSAGES' });
+    }
+    if (data.type === 'register_response') {
+      dispatch({ type: 'REGISTER_RESPONSE', payload: data.payload });
+    }
+    if (data.type === 'login_response') {
+      dispatch({ type: 'LOGIN_RESPONSE', payload: data.payload });
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log('Disconnected');
+    isConnected = false;
   };
 }
 
-export function* watchMessages(dispatch) {
-  yield takeEvery(ADD_MESSAGE, handleNewMessage);
+function sendRegister(username, email, password) {
+  if (ws && isConnected) {
+    ws.send(JSON.stringify({
+      type: 'register',
+      payload: { username, email, password }
+    }));
+  }
 }
 
-export function* watchUsers(dispatch) {
-  yield takeEvery(ADD_USER, handleNewUser);
+function sendLogin(email, password) {
+  if (ws && isConnected) {
+    ws.send(JSON.stringify({
+      type: 'login',
+      payload: { email, password }
+    }));
+  } else {
+    setTimeout(() => sendLogin(email, password), 500);
+  }
 }
 
-export function* listenForSocketEvents(dispatch) {
-  socket.on('message', (data) => {
-    dispatch(messageReceived(data.message, data.author));
-  });
-  
-  socket.on('users', (users) => {
-    dispatch(usersList(users));
-  });
+function sendAdminLogin(password) {
+  if (ws && isConnected) {
+    ws.send(JSON.stringify({
+      type: 'admin_login',
+      payload: { password }
+    }));
+  }
 }
 
-export default function* rootSaga(dispatch) {
-  yield all([
-    watchMessages(dispatch),
-    watchUsers(dispatch),
-    listenForSocketEvents(dispatch)
-  ]);
+function sendClearHistory() {
+  if (ws && isConnected) {
+    ws.send(JSON.stringify({
+      type: 'clear_history'
+    }));
+  }
 }
+
+function* sendMessage(action) {
+  if (ws && isConnected) {
+    ws.send(JSON.stringify({
+      type: 'message',
+      payload: { message: action.message }
+    }));
+  }
+}
+
+export default function* rootSaga(d) {
+  dispatch = d;
+  connectSocket();
+  yield takeEvery(ADD_MESSAGE, sendMessage);
+}
+
+export { sendRegister, sendLogin, sendAdminLogin, sendClearHistory };

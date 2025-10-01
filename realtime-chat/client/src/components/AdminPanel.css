@@ -1,0 +1,96 @@
+.admin-panel {
+    position: relative;
+  }
+  
+  .admin-toggle {
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #FDC830;
+    border: 2px solid #FDC830;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s;
+    text-transform: uppercase;
+  }
+  
+  .admin-toggle:hover {
+    background: #FDC830;
+    color: #000;
+    transform: scale(1.05);
+  }
+  
+  .admin-login,
+  .admin-controls {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background: linear-gradient(135deg, #FDC830 0%, #F7931E 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    min-width: 250px;
+    z-index: 1000;
+    border: 3px solid #000;
+  }
+  
+  .admin-login form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .admin-login input {
+    padding: 12px;
+    border: 2px solid #000;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  .admin-login button {
+    padding: 12px;
+    background: #000;
+    color: #FDC830;
+    border: 2px solid #FDC830;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s;
+  }
+  
+  .admin-login button:hover {
+    background: #FDC830;
+    color: #000;
+  }
+  
+  .admin-badge {
+    color: #000;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  }
+  
+  .clear-btn {
+    width: 100%;
+    padding: 15px;
+    background: #FF6B35;
+    color: white;
+    border: 3px solid #000;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s;
+    text-transform: uppercase;
+  }
+  
+  .clear-btn:hover {
+    background: #000;
+    color: #FDC830;
+    border-color: #FDC830;
+    transform: scale(1.05);
+  }

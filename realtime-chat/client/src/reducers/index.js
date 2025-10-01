@@ -1,38 +1,41 @@
 import { combineReducers } from 'redux';
-import { ADD_MESSAGE, MESSAGE_RECEIVED, ADD_USER, USERS_LIST } from '../actions';
+import { MESSAGE_RECEIVED, USERS_LIST } from '../actions';
 
-// Reducer para mensajes
 const messages = (state = [], action) => {
-  switch (action.type) {
-    case ADD_MESSAGE:
-    case MESSAGE_RECEIVED:
-      return [
-        ...state,
-        {
-          id: action.id,
-          message: action.message,
-          author: action.author
-        }
-      ];
-    default:
-      return state;
+  if (action.type === MESSAGE_RECEIVED) {
+    return [...state, { id: action.id, message: action.message, author: action.author }];
   }
+  if (action.type === 'CLEAR_ALL_MESSAGES') {
+    return [];
+  }
+  return state;
 };
 
-// Reducer para usuarios
 const users = (state = [], action) => {
-  switch (action.type) {
-    case USERS_LIST:
-      return action.users;
-    default:
-      return state;
+  if (action.type === USERS_LIST) {
+    return action.users;
   }
+  return state;
 };
 
-// Combinar reducers
-const chatApp = combineReducers({
-  messages,
-  users
-});
+const isAdmin = (state = false, action) => {
+  if (action.type === 'SET_ADMIN_STATUS') {
+    return action.payload;
+  }
+  return state;
+};
 
-export default chatApp;
+const authResponse = (state = null, action) => {
+  if (action.type === 'REGISTER_RESPONSE') {
+    return { type: 'register', ...action.payload };
+  }
+  if (action.type === 'LOGIN_RESPONSE') {
+    return { type: 'login', ...action.payload };
+  }
+  if (action.type === 'CLEAR_AUTH_RESPONSE') {
+    return null;
+  }
+  return state;
+};
+
+export default combineReducers({ messages, users, isAdmin, authResponse });
