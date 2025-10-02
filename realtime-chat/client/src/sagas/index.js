@@ -45,6 +45,9 @@ function connectSocket() {
     if (data.type === 'login_response') {
       dispatch({ type: 'LOGIN_RESPONSE', payload: data.payload });
     }
+    if (data.type === 'token_login_response') {
+      dispatch({ type: 'TOKEN_LOGIN_RESPONSE', payload: data.payload });
+    }
   };
   
   ws.onclose = () => {
@@ -70,6 +73,18 @@ function sendLogin(email, password) {
     }));
   } else {
     setTimeout(() => sendLogin(email, password), 500);
+  }
+}
+
+// NEW: Token-based login for auto-auth
+function sendTokenLogin(email, token) {
+  if (ws && isConnected) {
+    ws.send(JSON.stringify({
+      type: 'token_login',
+      payload: { email, token }
+    }));
+  } else {
+    setTimeout(() => sendTokenLogin(email, token), 500);
   }
 }
 
@@ -106,4 +121,4 @@ export default function* rootSaga(d) {
   yield takeEvery(ADD_MESSAGE, sendMessage);
 }
 
-export { sendRegister, sendLogin, sendAdminLogin, sendClearHistory };
+export { sendRegister, sendLogin, sendTokenLogin, sendAdminLogin, sendClearHistory };

@@ -10,6 +10,7 @@ const MessagesList = ({ messages }) => (
           key={msg.id}
           message={msg.message}
           author={msg.author}
+          avatar={msg.authorAvatar}
         />
       ))}
     </div>

@@ -5,7 +5,8 @@ import Login from './components/Login';
 import Register from './components/Register';
 import AdminPanel from './components/AdminPanel';
 import VoiceChannel from './components/VoiceChannel';
-import { sendRegister, sendLogin, sendAdminLogin, sendClearHistory } from './sagas';
+import ProfileSettings from './components/ProfileSettings';
+import { sendRegister, sendLogin, sendTokenLogin, sendAdminLogin, sendClearHistory } from './sagas';
 import logo from './logo.jpg';
 import './App.css';
 
@@ -18,6 +19,30 @@ function App() {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Check for saved token on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem('chatToken');
+    const savedUser = localStorage.getItem('chatUser');
+    
+    if (savedToken && savedUser) {
+      try {
+        const userData = JSON.parse(savedUser);
+        // Auto-login with saved token
+        setUser(userData);
+        setIsLoggedIn(true);
+        // Connect to websocket with saved credentials
+        sendTokenLogin(userData.email, savedToken);
+      } catch (error) {
+        console.error('Error parsing saved user data:', error);
+        localStorage.removeItem('chatToken');
+        localStorage.removeItem('chatUser');
+      }
+    }
+    setIsCheckingAuth(false);
+  }, []);
 
   useEffect(() => {
     if (authResponse) {
@@ -33,6 +58,10 @@ function App() {
       
       if (authResponse.type === 'login') {
         if (authResponse.success) {
+          // Save token and user data to localStorage
+          localStorage.setItem('chatToken', authResponse.token);
+          localStorage.setItem('chatUser', JSON.stringify(authResponse.user));
+          
           setUser(authResponse.user);
           setIsLoggedIn(true);
           setAuthError('');
@@ -56,6 +85,10 @@ function App() {
   };
 
   const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem('chatToken');
+    localStorage.removeItem('chatUser');
+    
     setIsLoggedIn(false);
     setUser(null);
     setAuthError('');
@@ -69,6 +102,29 @@ function App() {
   const handleClearHistory = () => {
     sendClearHistory();
   };
+
+  const handleProfileUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    // Update localStorage with new user data
+    localStorage.setItem('chatUser', JSON.stringify(updatedUser));
+  };
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <h2>Loading...</h2>
+        </div>
+      </div>
+    );
+  }
 
   // Show login/register screen
   if (!isLoggedIn) {
@@ -106,9 +162,26 @@ function App() {
           <h2>Chat App</h2>
         </div>
         <div className="user-info">
-          <span className="username-display">
-            <strong>{user.username}</strong>
-          </span>
+          <div className="user-avatar-section" onClick={() => setShowSettings(true)}>
+            {user.avatar ? (
+              <img 
+                src={`http://localhost:8989/uploads/avatars/${user.avatar}`} 
+                alt="Avatar" 
+                className="user-avatar-header"
+                title="Click to edit profile"
+              />
+            ) : (
+              <div className="user-avatar-placeholder" title="Click to add avatar">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="username-display">
+              <strong>{user.username}</strong>
+            </span>
+          </div>
+          <button onClick={() => setShowSettings(true)} className="settings-btn" title="Settings">
+            ⚙️
+          </button>
           <AdminPanel 
             isAdmin={isAdmin}
             onAdminLogin={handleAdminLogin}
@@ -127,6 +200,14 @@ function App() {
           <AddMessageContainer username={user.username} />
         </div>
       </div>
+      
+      {showSettings && (
+        <ProfileSettings 
+          user={user}
+          onClose={() => setShowSettings(false)}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 const usersFile = path.join(__dirname, 'users.json');
 const messagesFile = path.join(__dirname, 'messages.json');
+const uploadsDir = path.join(__dirname, 'uploads');
+const avatarsDir = path.join(uploadsDir, 'avatars');
+const filesDir = path.join(uploadsDir, 'files');
+
+// Create upload directories if they don't exist
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir);
+if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir);
 
 // Load users
 function loadUsers() {
@@ -42,19 +51,55 @@ async function registerUser(username, email, password) {
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
   
+  // Generate verification token
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  
   const newUser = {
     id: Date.now().toString(),
     username,
     email,
     password: hashedPassword,
     createdAt: new Date().toISOString(),
-    notifications: true
+    notifications: true,
+    isVerified: false,
+    verificationToken,
+    avatar: null // NEW: Avatar field
   };
   
   users.push(newUser);
   saveUsers(users);
   
-  return { success: true, user: { id: newUser.id, username: newUser.username, email: newUser.email } };
+  return { 
+    success: true, 
+    user: { 
+      id: newUser.id, 
+      username: newUser.username, 
+      email: newUser.email,
+      avatar: newUser.avatar
+    },
+    verificationToken
+  };
+}
+
+// Verify email
+function verifyEmail(token) {
+  const users = loadUsers();
+  const user = users.find(u => u.verificationToken === token);
+  
+  if (!user) {
+    return { success: false, message: 'Invalid or expired verification token' };
+  }
+  
+  if (user.isVerified) {
+    return { success: false, message: 'Email already verified' };
+  }
+  
+  // Mark user as verified
+  user.isVerified = true;
+  user.verificationToken = null;
+  saveUsers(users);
+  
+  return { success: true, message: 'Email verified successfully!' };
 }
 
 // Login user
@@ -72,7 +117,7 @@ async function loginUser(email, password) {
     return { success: false, message: 'Invalid email or password' };
   }
   
-  // NEW: Check if email is verified
+  // Check if email is verified
   if (!user.isVerified) {
     return { 
       success: false, 
@@ -86,7 +131,40 @@ async function loginUser(email, password) {
       id: user.id,
       username: user.username,
       email: user.email,
-      notifications: user.notifications
+      notifications: user.notifications,
+      avatar: user.avatar // NEW: Include avatar
+    }
+  };
+}
+
+// NEW: Update user avatar
+function updateUserAvatar(email, avatarFilename) {
+  const users = loadUsers();
+  const user = users.find(u => u.email === email);
+  
+  if (!user) {
+    return { success: false, message: 'User not found' };
+  }
+  
+  // Delete old avatar if exists
+  if (user.avatar) {
+    const oldAvatarPath = path.join(avatarsDir, user.avatar);
+    if (fs.existsSync(oldAvatarPath)) {
+      fs.unlinkSync(oldAvatarPath);
+    }
+  }
+  
+  user.avatar = avatarFilename;
+  saveUsers(users);
+  
+  return { 
+    success: true, 
+    avatar: avatarFilename,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar
     }
   };
 }
@@ -124,11 +202,33 @@ function saveMessages(messages) {
   }
 }
 
+// NEW: Save uploaded file
+function saveUploadedFile(buffer, originalFilename) {
+  const timestamp = Date.now();
+  const ext = path.extname(originalFilename);
+  const filename = `${timestamp}-${crypto.randomBytes(8).toString('hex')}${ext}`;
+  const filepath = path.join(filesDir, filename);
+  
+  fs.writeFileSync(filepath, buffer);
+  
+  return {
+    filename,
+    originalName: originalFilename,
+    path: `/uploads/files/${filename}`,
+    size: buffer.length
+  };
+}
+
 module.exports = {
   registerUser,
+  verifyEmail,
   loginUser,
+  updateUserAvatar,
   getUserByEmail,
   getUsersWithNotifications,
   loadMessages,
-  saveMessages
+  saveMessages,
+  saveUploadedFile,
+  avatarsDir,
+  filesDir
 };

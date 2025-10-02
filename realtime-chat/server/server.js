@@ -2,25 +2,33 @@ const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 const url = require('url');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const { 
   registerUser,
   verifyEmail, 
   loginUser,
+  updateUserAvatar,
+  getUserByEmail,
   getUsersWithNotifications,
   loadMessages,
-  saveMessages
+  saveMessages,
+  saveUploadedFile,
+  avatarsDir,
+  filesDir
 } = require('./database');
 const { 
   sendVerificationEmail,
   sendNewMessageNotification 
 } = require('./emailNotifier');
 
-// Create HTTP server for verification endpoint
+// Create HTTP server for verification endpoint and file serving
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   
+  // Email verification endpoint
   if (parsedUrl.pathname === '/verify') {
     const token = parsedUrl.query.token;
     
@@ -74,10 +82,39 @@ const server = http.createServer((req, res) => {
         </html>
       `);
     }
-  } else {
-    res.writeHead(404);
-    res.end('Not found');
+    return;
   }
+  
+  // Serve uploaded files (avatars and chat files)
+  if (parsedUrl.pathname.startsWith('/uploads/')) {
+    const filePath = path.join(__dirname, parsedUrl.pathname);
+    
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeTypes = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.pdf': 'application/pdf',
+        '.txt': 'text/plain',
+        '.zip': 'application/zip'
+      };
+      
+      const contentType = mimeTypes[ext] || 'application/octet-stream';
+      
+      res.writeHead(200, { 'Content-Type': contentType });
+      fs.createReadStream(filePath).pipe(res);
+    } else {
+      res.writeHead(404);
+      res.end('File not found');
+    }
+    return;
+  }
+  
+  res.writeHead(404);
+  res.end('Not found');
 });
 
 const wss = new WebSocket.Server({ server });
@@ -97,7 +134,91 @@ wss.on('connection', (ws) => {
 
   ws.on('message', async (data) => {
     try {
-      const msg = JSON.parse(data.toString());
+      // Try to parse as JSON first (for text messages)
+      let msg;
+      let isFileUpload = false;
+      
+      try {
+        msg = JSON.parse(data.toString());
+      } catch (e) {
+        // If not JSON, it might be binary file data
+        isFileUpload = true;
+      }
+      
+      // Handle file upload (binary data)
+      if (isFileUpload) {
+        // File format: first 4 bytes = metadata length, then metadata JSON, then file data
+        const metadataLength = data.readUInt32BE(0);
+        const metadataBuffer = data.slice(4, 4 + metadataLength);
+        const fileBuffer = data.slice(4 + metadataLength);
+        
+        const metadata = JSON.parse(metadataBuffer.toString());
+        
+        if (metadata.type === 'avatar_upload') {
+          // Save avatar
+          const timestamp = Date.now();
+          const ext = path.extname(metadata.filename);
+          const avatarFilename = `${metadata.userId}-${timestamp}${ext}`;
+          const avatarPath = path.join(avatarsDir, avatarFilename);
+          
+          fs.writeFileSync(avatarPath, fileBuffer);
+          
+          const result = updateUserAvatar(metadata.email, avatarFilename);
+          
+          // Update avatar in onlineUsers
+          if (result.success) {
+            const userEntry = Array.from(onlineUsers.entries()).find(([_, user]) => user.email === metadata.email);
+            if (userEntry) {
+              userEntry[1].avatar = avatarFilename;
+              broadcastOnlineUsers();
+            }
+          }
+          
+          ws.send(JSON.stringify({ 
+            type: 'avatar_upload_response', 
+            payload: result 
+          }));
+        } else if (metadata.type === 'file_message') {
+          // Save chat file
+          const fileInfo = saveUploadedFile(fileBuffer, metadata.filename);
+          
+          const user = onlineUsers.get(ws);
+          if (!user) {
+            ws.send(JSON.stringify({ type: 'error', payload: { message: 'Not authenticated' } }));
+            return;
+          }
+          
+          const newMsg = {
+            message: metadata.message || '',
+            author: user.username,
+            authorAvatar: user.avatar,
+            timestamp: Date.now(),
+            file: {
+              filename: fileInfo.filename,
+              originalName: fileInfo.originalName,
+              path: fileInfo.path,
+              size: fileInfo.size,
+              type: metadata.fileType
+            }
+          };
+          
+          messages.push(newMsg);
+          
+          if (messages.length > MAX_MESSAGES) {
+            messages = messages.slice(-MAX_MESSAGES);
+          }
+          
+          saveMessages(messages);
+          
+          // Broadcast to all clients
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'message', payload: newMsg }));
+            }
+          });
+        }
+        return;
+      }
       
       // User registration
       if (msg.type === 'register') {
@@ -110,7 +231,7 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'register_response', payload: result }));
       }
       
-      // User login (simple - no 2FA)
+      // User login
       if (msg.type === 'login') {
         const result = await loginUser(msg.payload.email, msg.payload.password);
         
@@ -123,10 +244,12 @@ wss.on('connection', (ws) => {
           
           result.token = token;
           
+          const user = getUserByEmail(msg.payload.email);
           onlineUsers.set(ws, {
             userId: result.user.id,
             username: result.user.username,
-            email: result.user.email
+            email: result.user.email,
+            avatar: user.avatar
           });
           
           console.log('User logged in:', result.user.username);
@@ -141,6 +264,47 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'login_response', payload: result }));
       }
       
+      // Token-based login
+      if (msg.type === 'token_login') {
+        try {
+          const decoded = jwt.verify(msg.payload.token, process.env.JWT_SECRET || 'fallback_secret');
+          const user = getUserByEmail(msg.payload.email);
+          
+          if (user && user.isVerified && decoded.email === msg.payload.email) {
+            onlineUsers.set(ws, {
+              userId: user.id,
+              username: user.username,
+              email: user.email,
+              avatar: user.avatar
+            });
+            
+            console.log('User auto-logged in:', user.username);
+            
+            messages.forEach(m => {
+              ws.send(JSON.stringify({ type: 'message', payload: m }));
+            });
+            
+            broadcastOnlineUsers();
+            
+            ws.send(JSON.stringify({ 
+              type: 'token_login_response', 
+              payload: { success: true }
+            }));
+          } else {
+            ws.send(JSON.stringify({ 
+              type: 'token_login_response', 
+              payload: { success: false, message: 'Invalid token' }
+            }));
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          ws.send(JSON.stringify({ 
+            type: 'token_login_response', 
+            payload: { success: false, message: 'Token expired or invalid' }
+          }));
+        }
+      }
+      
       // Admin login
       if (msg.type === 'admin_login') {
         if (msg.payload.password === ADMIN_PASSWORD) {
@@ -152,7 +316,7 @@ wss.on('connection', (ws) => {
         }
       }
       
-      // New message
+      // New text message
       if (msg.type === 'message') {
         const user = onlineUsers.get(ws);
         if (!user) {
@@ -163,6 +327,7 @@ wss.on('connection', (ws) => {
         const newMsg = {
           message: msg.payload.message,
           author: user.username,
+          authorAvatar: user.avatar,  // INCLUDE AVATAR
           timestamp: Date.now()
         };
         
@@ -261,7 +426,11 @@ wss.on('connection', (ws) => {
 });
 
 function broadcastOnlineUsers() {
-  const userList = Array.from(onlineUsers.values()).map(u => u.username);
+  // SEND AVATAR WITH USERNAME
+  const userList = Array.from(onlineUsers.values()).map(u => ({
+    username: u.username,
+    avatar: u.avatar
+  }));
   console.log('Online users:', userList);
   
   wss.clients.forEach(client => {
