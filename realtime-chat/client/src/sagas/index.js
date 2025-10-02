@@ -1,5 +1,6 @@
 import { takeEvery } from 'redux-saga/effects';
 import { ADD_MESSAGE, messageReceived, usersList } from '../actions';
+import { config } from '../config';  // ADD THIS LINE
 
 let ws = null;
 let dispatch = null;
@@ -7,7 +8,7 @@ let isConnected = false;
 let pendingUser = null;
 
 function connectSocket() {
-  ws = new WebSocket('ws://localhost:8989');
+  ws = new WebSocket(config.WS_URL);  // USE config.WS_URL instead of hardcoded
   
   window.chatWebSocket = ws;
   
@@ -31,7 +32,8 @@ function connectSocket() {
       dispatch(messageReceived(
         data.payload.message, 
         data.payload.author, 
-        data.payload.authorAvatar
+        data.payload.authorAvatar,
+        data.payload.file
       ));
     }
     if (data.type === 'users') {
@@ -80,7 +82,6 @@ function sendLogin(email, password) {
   }
 }
 
-// NEW: Token-based login for auto-auth
 function sendTokenLogin(email, token) {
   if (ws && isConnected) {
     ws.send(JSON.stringify({

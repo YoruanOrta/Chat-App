@@ -8,7 +8,7 @@
     "notifications": true,
     "isVerified": true,
     "verificationToken": null,
-    "avatar": "1759384415432-1759425423688.jpg"
+    "avatar": "1759384415432-1759438177725.jpg"
   },
   {
     "id": "1759430050712",
@@ -20,5 +20,16 @@
     "isVerified": true,
     "verificationToken": null,
     "avatar": "1759430050712-1759430776464.jpeg"
+  },
+  {
+    "id": "1759442759447",
+    "username": "Supaah2",
+    "email": "huelebichoz1234@gmail.com",
+    "password": "$2b$10$kYKBd9ImWuiBxm/npWCW/OjoNr1xBVwuHPBwBG9YOvURrY35qJM/O",
+    "createdAt": "2025-10-02T22:05:59.447Z",
+    "notifications": true,
+    "isVerified": true,
+    "verificationToken": null,
+    "avatar": "1759442759447-1759442969678.png"
   }
 ]

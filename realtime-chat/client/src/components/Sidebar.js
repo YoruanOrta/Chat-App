@@ -1,11 +1,11 @@
 import React from 'react';
+import { config } from '../config';
 
 const Sidebar = ({ users }) => (
   <aside className="sidebar">
     <h3>Online Users ({users.length})</h3>
     <ul>
       {users.map((user, index) => {
-        // Handle both string usernames (old format) and user objects (new format)
         const username = typeof user === 'string' ? user : user.username;
         const avatar = typeof user === 'object' ? user.avatar : null;
         
@@ -13,7 +13,7 @@ const Sidebar = ({ users }) => (
           <li key={index}>
             {avatar ? (
               <img 
-                src={`http://localhost:8989/uploads/avatars/${avatar}`} 
+                src={`${config.API_URL}/uploads/avatars/${avatar}`} 
                 alt={username}
                 className="sidebar-user-avatar"
               />

@@ -21,7 +21,7 @@ const {
 } = require('./database');
 const { 
   sendVerificationEmail,
-  sendNewMessageNotification 
+  sendVoiceChannelNotification   // ADD THIS INSTEAD
 } = require('./emailNotifier');
 
 // Create HTTP server for verification endpoint and file serving
@@ -46,10 +46,10 @@ const server = http.createServer((req, res) => {
         <html>
           <head>
             <style>
-              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%); }
               .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-              h1 { color: #28a745; }
-              a { background: #FF6B35; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+              h1 { color: #8a2be2; }
+              a { background: #8a2be2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
             </style>
           </head>
           <body>
@@ -68,7 +68,7 @@ const server = http.createServer((req, res) => {
         <html>
           <head>
             <style>
-              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%); }
               .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
               h1 { color: #dc3545; }
             </style>
@@ -228,7 +228,10 @@ wss.on('connection', (ws) => {
           await sendVerificationEmail(msg.payload.email, msg.payload.username, result.verificationToken);
         }
         
-        ws.send(JSON.stringify({ type: 'register_response', payload: result }));
+        ws.send(JSON.stringify({ 
+          type: 'register_response', 
+          payload: result 
+        }));
       }
       
       // User login
@@ -237,40 +240,47 @@ wss.on('connection', (ws) => {
         
         if (result.success) {
           const token = jwt.sign(
-            { userId: result.user.id, username: result.user.username, email: result.user.email },
-            process.env.JWT_SECRET || 'fallback_secret',
+            { email: msg.payload.email, userId: result.user.id },
+            process.env.JWT_SECRET || 'your-secret-key',
             { expiresIn: '7d' }
           );
           
-          result.token = token;
-          
-          const user = getUserByEmail(msg.payload.email);
           onlineUsers.set(ws, {
             userId: result.user.id,
             username: result.user.username,
-            email: result.user.email,
-            avatar: user.avatar
-          });
-          
-          console.log('User logged in:', result.user.username);
-          
-          messages.forEach(m => {
-            ws.send(JSON.stringify({ type: 'message', payload: m }));
+            email: msg.payload.email,
+            avatar: result.user.avatar
           });
           
           broadcastOnlineUsers();
+          
+          ws.send(JSON.stringify({ 
+            type: 'login_response', 
+            payload: { 
+              success: true, 
+              token,
+              user: result.user
+            }
+          }));
+          
+          messages.forEach(msg => {
+            ws.send(JSON.stringify({ type: 'message', payload: msg }));
+          });
+        } else {
+          ws.send(JSON.stringify({ 
+            type: 'login_response', 
+            payload: result 
+          }));
         }
-        
-        ws.send(JSON.stringify({ type: 'login_response', payload: result }));
       }
       
-      // Token-based login
+      // Token-based login (auto-login)
       if (msg.type === 'token_login') {
         try {
-          const decoded = jwt.verify(msg.payload.token, process.env.JWT_SECRET || 'fallback_secret');
+          const decoded = jwt.verify(msg.payload.token, process.env.JWT_SECRET || 'your-secret-key');
           const user = getUserByEmail(msg.payload.email);
           
-          if (user && user.isVerified && decoded.email === msg.payload.email) {
+          if (user && user.isVerified) {
             onlineUsers.set(ws, {
               userId: user.id,
               username: user.username,
@@ -278,18 +288,24 @@ wss.on('connection', (ws) => {
               avatar: user.avatar
             });
             
-            console.log('User auto-logged in:', user.username);
-            
-            messages.forEach(m => {
-              ws.send(JSON.stringify({ type: 'message', payload: m }));
-            });
-            
             broadcastOnlineUsers();
             
             ws.send(JSON.stringify({ 
               type: 'token_login_response', 
-              payload: { success: true }
+              payload: { 
+                success: true,
+                user: {
+                  id: user.id,
+                  username: user.username,
+                  email: user.email,
+                  avatar: user.avatar
+                }
+              }
             }));
+            
+            messages.forEach(msg => {
+              ws.send(JSON.stringify({ type: 'message', payload: msg }));
+            });
           } else {
             ws.send(JSON.stringify({ 
               type: 'token_login_response', 
@@ -327,7 +343,7 @@ wss.on('connection', (ws) => {
         const newMsg = {
           message: msg.payload.message,
           author: user.username,
-          authorAvatar: user.avatar,  // INCLUDE AVATAR
+          authorAvatar: user.avatar,
           timestamp: Date.now()
         };
         
@@ -345,25 +361,57 @@ wss.on('connection', (ws) => {
           }
         });
         
-        const usersWithNotifications = getUsersWithNotifications();
-        const offlineUsers = usersWithNotifications.filter(u => {
-          return !Array.from(onlineUsers.values()).find(ou => ou.email === u.email);
-        });
-        
-        if (offlineUsers.length > 0) {
-          sendNewMessageNotification(offlineUsers, newMsg.message, newMsg.author);
+       
+      }
+      
+      // Typing indicators
+      if (msg.type === 'typing_start') {
+        const user = onlineUsers.get(ws);
+        if (user) {
+          wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'typing_start',
+                payload: { username: user.username }
+              }));
+            }
+          });
+        }
+      }
+
+      if (msg.type === 'typing_stop') {
+        const user = onlineUsers.get(ws);
+        if (user) {
+          wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'typing_stop',
+                payload: { username: user.username }
+              }));
+            }
+          });
         }
       }
       
       // Voice channel join
       if (msg.type === 'join_voice') {
         const user = onlineUsers.get(ws);
-        if (user) {
-          voiceRooms.set(ws, { userId: user.userId, username: user.username });
-          console.log('User joined voice:', user.username);
-          broadcastVoiceUsers();
-        }
-      }
+  if (user) {
+    voiceRooms.set(ws, { userId: user.userId, username: user.username });
+    console.log('User joined voice:', user.username);
+    broadcastVoiceUsers();
+    
+    // NEW: Send email notifications to offline users
+    const usersWithNotifications = getUsersWithNotifications();
+    const offlineUsers = usersWithNotifications.filter(u => {
+      return !Array.from(onlineUsers.values()).find(ou => ou.email === u.email);
+    });
+    
+    if (offlineUsers.length > 0) {
+      sendVoiceChannelNotification(offlineUsers, user.username);
+    }
+  }
+}
       
       // Voice channel leave
       if (msg.type === 'leave_voice') {
@@ -426,7 +474,6 @@ wss.on('connection', (ws) => {
 });
 
 function broadcastOnlineUsers() {
-  // SEND AVATAR WITH USERNAME
   const userList = Array.from(onlineUsers.values()).map(u => ({
     username: u.username,
     avatar: u.avatar

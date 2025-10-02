@@ -7,7 +7,8 @@ const messages = (state = [], action) => {
       id: action.id, 
       message: action.message, 
       author: action.author,
-      authorAvatar: action.authorAvatar  // AGREGAR ESTO
+      authorAvatar: action.authorAvatar,
+      file: action.file  // ADD THIS LINE!!!
     }];
   }
   if (action.type === 'CLEAR_ALL_MESSAGES') {

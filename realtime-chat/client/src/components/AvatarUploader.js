@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { config } from '../config';
 import './AvatarUploader.css';
 
 const AvatarUploader = ({ currentAvatar, userId, email, onAvatarUpdate }) => {
@@ -9,26 +10,22 @@ const AvatarUploader = ({ currentAvatar, userId, email, onAvatarUpdate }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image must be less than 5MB');
       return;
     }
 
-    // Show preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreview(e.target.result);
     };
     reader.readAsDataURL(file);
 
-    // Upload
     await uploadAvatar(file);
   };
 
@@ -40,7 +37,6 @@ const AvatarUploader = ({ currentAvatar, userId, email, onAvatarUpdate }) => {
       reader.onload = async (e) => {
         const arrayBuffer = e.target.result;
         
-        // Create metadata
         const metadata = {
           type: 'avatar_upload',
           userId: userId,
@@ -51,24 +47,17 @@ const AvatarUploader = ({ currentAvatar, userId, email, onAvatarUpdate }) => {
         const metadataStr = JSON.stringify(metadata);
         const metadataBuffer = new TextEncoder().encode(metadataStr);
         
-        // Create combined buffer: [4 bytes length][metadata][file data]
         const combinedBuffer = new Uint8Array(4 + metadataBuffer.length + arrayBuffer.byteLength);
         
-        // Write metadata length
         const view = new DataView(combinedBuffer.buffer);
         view.setUint32(0, metadataBuffer.length, false);
         
-        // Write metadata
         combinedBuffer.set(metadataBuffer, 4);
-        
-        // Write file data
         combinedBuffer.set(new Uint8Array(arrayBuffer), 4 + metadataBuffer.length);
         
-        // Send via WebSocket
         if (window.chatWebSocket && window.chatWebSocket.readyState === WebSocket.OPEN) {
           window.chatWebSocket.send(combinedBuffer);
           
-          // Wait for response
           const handleResponse = (event) => {
             try {
               const data = JSON.parse(event.data);
@@ -102,7 +91,7 @@ const AvatarUploader = ({ currentAvatar, userId, email, onAvatarUpdate }) => {
     }
   };
 
-  const avatarUrl = preview || (currentAvatar ? `http://localhost:8989/uploads/avatars/${currentAvatar}` : null);
+  const avatarUrl = preview || (currentAvatar ? `${config.API_URL}/uploads/avatars/${currentAvatar}` : null);
 
   return (
     <div className="avatar-uploader">

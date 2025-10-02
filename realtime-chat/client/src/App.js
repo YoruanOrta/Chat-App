@@ -9,6 +9,7 @@ import ProfileSettings from './components/ProfileSettings';
 import { sendRegister, sendLogin, sendTokenLogin, sendAdminLogin, sendClearHistory } from './sagas';
 import logo from './logo.jpg';
 import './App.css';
+import { config } from './config';
 
 function App() {
   const dispatch = useDispatch();
@@ -117,7 +118,7 @@ function App() {
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'
+        background: 'linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%)'
       }}>
         <div style={{ textAlign: 'center', color: 'white' }}>
           <h2>Loading...</h2>
@@ -163,49 +164,56 @@ function App() {
         </div>
         <div className="user-info">
           <div className="user-avatar-section" onClick={() => setShowSettings(true)}>
-            {user.avatar ? (
-              <img 
-                src={`http://localhost:8989/uploads/avatars/${user.avatar}`} 
-                alt="Avatar" 
-                className="user-avatar-header"
-                title="Click to edit profile"
-              />
-            ) : (
-              <div className="user-avatar-placeholder" title="Click to add avatar">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <span className="username-display">
-              <strong>{user.username}</strong>
-            </span>
+          import { config } from './config';  // ADD THIS AT TOP
+
+// Then update the avatar URL:
+{user.avatar ? (
+  <img 
+    src={`${config.API_URL}/uploads/avatars/${user.avatar}`} 
+    alt={user.username} 
+    className="user-avatar-header"
+  />
+) : (
+  <div className="user-avatar-placeholder">
+    {user.username.charAt(0).toUpperCase()}
+  </div>
+)}
+            <span className="username-display">{user.username}</span>
           </div>
-          <button onClick={() => setShowSettings(true)} className="settings-btn" title="Settings">
+          <button className="settings-btn" onClick={() => setShowSettings(true)}>
             ⚙️
           </button>
-          <AdminPanel 
-            isAdmin={isAdmin}
-            onAdminLogin={handleAdminLogin}
-            onClearHistory={handleClearHistory}
-          />
-          <button onClick={handleLogout} className="logout-btn">Logout</button>
+          <button className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
       </div>
+
       <div className="app-content">
         <div className="sidebar-voice-container">
           <SidebarContainer />
           <VoiceChannel username={user.username} />
         </div>
+        
         <div className="chat-area">
           <MessagesListContainer />
           <AddMessageContainer username={user.username} />
         </div>
       </div>
-      
+
       {showSettings && (
         <ProfileSettings 
           user={user}
           onClose={() => setShowSettings(false)}
-          onProfileUpdate={handleProfileUpdate}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
+
+      {isAdmin && (
+        <AdminPanel 
+          onAdminLogin={handleAdminLogin}
+          onClearHistory={handleClearHistory}
+          isAdmin={isAdmin}
         />
       )}
     </div>
