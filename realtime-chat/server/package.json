@@ -13,6 +13,7 @@
     "express": "^4.17.1",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^7.0.6",
+    "simple-peer": "^9.11.1",
     "socket.io": "^4.0.0",
     "ws": "^8.13.0"
   },

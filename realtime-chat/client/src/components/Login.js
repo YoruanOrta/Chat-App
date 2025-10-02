@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Login = ({ onLogin, onSwitchToRegister }) => {
+const Login = ({ onLogin, onSwitchToRegister, error }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
     
     if (!email.trim() || !password) {
-      setError('Email and password are required');
       return;
     }
     
@@ -32,12 +30,21 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
             placeholder="Email"
             autoFocus
           />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-          />
+          <div className="password-input-container">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
           <button type="submit">Login</button>
         </form>
         <p className="switch-form">

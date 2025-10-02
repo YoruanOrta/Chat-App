@@ -1,41 +1,45 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Register = ({ onRegister, onBackToLogin }) => {
+const Register = ({ onRegister, onBackToLogin, error }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [localError, setLocalError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
+    setLocalError('');
     
     if (!username.trim() || !email.trim() || !password) {
-      setError('All fields are required');
+      setLocalError('All fields are required');
       return;
     }
     
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setLocalError('Password must be at least 6 characters');
       return;
     }
     
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setLocalError('Passwords do not match');
       return;
     }
     
     onRegister(username.trim(), email.trim(), password);
   };
 
+  const displayError = error || localError;
+
   return (
     <div className="login-container">
       <div className="login-box">
         <h1>Create Account</h1>
         <p>Join the chat community</p>
-        {error && <div className="error-message">{error}</div>}
+        {displayError && <div className="error-message">{displayError}</div>}
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -50,18 +54,36 @@ const Register = ({ onRegister, onBackToLogin }) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
           />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-          />
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm Password"
-          />
+          <div className="password-input-container">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+          <div className="password-input-container">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm Password"
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
           <button type="submit">Register</button>
         </form>
         <p className="switch-form">

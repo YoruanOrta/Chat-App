@@ -1,0 +1,148 @@
+.voice-channel {
+    background: linear-gradient(180deg, #FF6B35 0%, #F7931E 100%);
+    border-top: 5px solid #000;
+    padding: 15px;
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .voice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .voice-header h3 {
+    margin: 0;
+    color: #000;
+    font-size: 16px;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+  }
+  
+  .join-voice-btn {
+    padding: 8px 16px;
+    background: #000;
+    color: #FDC830;
+    border: 3px solid #FDC830;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.3s;
+    text-transform: uppercase;
+  }
+  
+  .join-voice-btn:hover {
+    background: #FDC830;
+    color: #000;
+    transform: scale(1.05);
+  }
+  
+  .voice-controls {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .mute-btn {
+    padding: 8px 12px;
+    background: #fff;
+    border: 3px solid #000;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+  }
+  
+  .mute-btn.muted {
+    background: #FF6B35;
+    color: white;
+  }
+  
+  .mute-btn:hover {
+    transform: scale(1.1);
+  }
+  
+  .leave-voice-btn {
+    padding: 8px 16px;
+    background: #FF6B35;
+    color: white;
+    border: 3px solid #000;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.3s;
+    text-transform: uppercase;
+  }
+  
+  .leave-voice-btn:hover {
+    background: #000;
+    color: #FDC830;
+    border-color: #FDC830;
+  }
+  
+  .voice-users-list {
+    margin-top: 10px;
+  }
+  
+  .voice-users-list h4 {
+    margin: 0 0 10px 0;
+    color: #000;
+    font-size: 13px;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  }
+  
+  .no-users {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+  }
+  
+  .voice-users-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  
+  .voice-users-list li {
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.9);
+    margin-bottom: 5px;
+    border-radius: 5px;
+    border-left: 3px solid #FF6B35;
+    font-weight: bold;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+  }
+  
+  .voice-users-list li.speaking {
+    background: #FDC830;
+    border-left-color: #000;
+    animation: speakingPulse 0.5s ease-in-out infinite;
+  }
+  
+  @keyframes speakingPulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+      transform: scale(1.03);
+      box-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+    }
+  }
+  
+  .voice-indicator {
+    font-size: 14px;
+  }

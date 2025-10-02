@@ -123,3 +123,34 @@
   .switch-form span:hover {
     color: #FDC830;
   }
+  .password-input-container {
+    position: relative;
+    width: 100%;
+  }
+  
+  .password-input-container input {
+    width: 100%;
+    padding-right: 50px;
+  }
+  
+  .toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  
+  .toggle-password:hover {
+    transform: translateY(-50%) scale(1.15);
+  }

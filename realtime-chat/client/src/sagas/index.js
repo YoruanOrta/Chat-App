@@ -4,13 +4,24 @@ import { ADD_MESSAGE, messageReceived, usersList } from '../actions';
 let ws = null;
 let dispatch = null;
 let isConnected = false;
+let pendingUser = null;
 
 function connectSocket() {
   ws = new WebSocket('ws://localhost:8989');
   
+  window.chatWebSocket = ws;
+  
   ws.onopen = () => {
     console.log('Connected');
     isConnected = true;
+    
+    if (pendingUser) {
+      ws.send(JSON.stringify({
+        type: 'username',
+        payload: { name: pendingUser }
+      }));
+      pendingUser = null;
+    }
   };
   
   ws.onmessage = (e) => {
@@ -86,6 +97,7 @@ function* sendMessage(action) {
       payload: { message: action.message }
     }));
   }
+  yield;
 }
 
 export default function* rootSaga(d) {

@@ -4,7 +4,9 @@ import { SidebarContainer, MessagesListContainer, AddMessageContainer } from './
 import Login from './components/Login';
 import Register from './components/Register';
 import AdminPanel from './components/AdminPanel';
+import VoiceChannel from './components/VoiceChannel';
 import { sendRegister, sendLogin, sendAdminLogin, sendClearHistory } from './sagas';
+import logo from './logo.jpg';
 import './App.css';
 
 function App() {
@@ -12,18 +14,18 @@ function App() {
   const isAdmin = useSelector(state => state.isAdmin);
   const authResponse = useSelector(state => state.authResponse);
   
-  const [view, setView] = useState('login'); // 'login' or 'register'
+  const [view, setView] = useState('login');
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  // Listen for auth responses
   useEffect(() => {
     if (authResponse) {
       if (authResponse.type === 'register') {
         if (authResponse.success) {
-          alert('Registration successful! Please login.');
+          alert('Registration successful! Please check your email to verify your account before logging in.');
           setView('login');
+          setAuthError('');
         } else {
           setAuthError(authResponse.message);
         }
@@ -33,13 +35,12 @@ function App() {
         if (authResponse.success) {
           setUser(authResponse.user);
           setIsLoggedIn(true);
-          localStorage.setItem('chatToken', authResponse.token);
+          setAuthError('');
         } else {
-          setAuthError(authResponse.message);
+          setAuthError(authResponse.message || 'Invalid email or password');
         }
       }
       
-      // Clear response after handling
       dispatch({ type: 'CLEAR_AUTH_RESPONSE' });
     }
   }, [authResponse, dispatch]);
@@ -57,7 +58,7 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUser(null);
-    localStorage.removeItem('chatToken');
+    setAuthError('');
     window.location.reload();
   };
 
@@ -79,6 +80,7 @@ function App() {
             setView('login');
             setAuthError('');
           }}
+          error={authError}
         />
       );
     }
@@ -90,6 +92,7 @@ function App() {
           setView('register');
           setAuthError('');
         }}
+        error={authError}
       />
     );
   }
@@ -98,10 +101,13 @@ function App() {
   return (
     <div className="app-container">
       <div className="app-header">
-        <h2>💬 Chat App</h2>
+        <div className="app-logo-section">
+          <img src={logo} alt="Logo" className="app-logo" />
+          <h2>Chat App</h2>
+        </div>
         <div className="user-info">
           <span className="username-display">
-            👤 <strong>{user.username}</strong>
+            <strong>{user.username}</strong>
           </span>
           <AdminPanel 
             isAdmin={isAdmin}
@@ -112,7 +118,10 @@ function App() {
         </div>
       </div>
       <div className="app-content">
-        <SidebarContainer />
+        <div className="sidebar-voice-container">
+          <SidebarContainer />
+          <VoiceChannel username={user.username} />
+        </div>
         <div className="chat-area">
           <MessagesListContainer />
           <AddMessageContainer username={user.username} />

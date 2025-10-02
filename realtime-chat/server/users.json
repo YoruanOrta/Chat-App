@@ -1,18 +1,10 @@
 [
   {
-    "id": "1759304239959",
-    "username": "Gaby",
-    "email": "aurepgst@gmail.com",
-    "password": "$2b$10$wpMss/lvK1ShVexW6wGuP.HavRtEhPhXtC8InBRpPot7i9BYkyqTC",
-    "createdAt": "2025-10-01T07:37:19.959Z",
-    "notifications": true
-  },
-  {
-    "id": "1759305676739",
-    "username": "Supaah",
+    "id": "1759383214409",
+    "username": "ElSupitah",
     "email": "aureliopagan6@gmail.com",
-    "password": "$2b$10$oY9Txpl9QgCKiCU9kjiwhOCAAATLG0nbzwBThApiMH2JfjPYGI9zy",
-    "createdAt": "2025-10-01T08:01:16.739Z",
+    "password": "$2b$10$YT96LZP9Y2oX98se4dkrluPVJypQci5.m4cI6I7oDEob0bScwkGba",
+    "createdAt": "2025-10-02T05:33:34.409Z",
     "notifications": true
   }
 ]

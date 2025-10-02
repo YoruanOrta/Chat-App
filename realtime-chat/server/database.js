@@ -72,14 +72,22 @@ async function loginUser(email, password) {
     return { success: false, message: 'Invalid email or password' };
   }
   
+  // NEW: Check if email is verified
+  if (!user.isVerified) {
+    return { 
+      success: false, 
+      message: 'Please verify your email before logging in. Check your inbox for the verification link.' 
+    };
+  }
+  
   return { 
-    success: true, 
-    user: { 
-      id: user.id, 
-      username: user.username, 
+    success: true,
+    user: {
+      id: user.id,
+      username: user.username,
       email: user.email,
-      notifications: user.notifications 
-    } 
+      notifications: user.notifications
+    }
   };
 }
 

@@ -1,21 +1,91 @@
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
+const http = require('http');
+const url = require('url');
 require('dotenv').config();
 
 const { 
-  registerUser, 
-  loginUser, 
+  registerUser,
+  verifyEmail, 
+  loginUser,
   getUsersWithNotifications,
   loadMessages,
   saveMessages
 } = require('./database');
-const { sendNewMessageNotification } = require('./emailNotifier');
+const { 
+  sendVerificationEmail,
+  sendNewMessageNotification 
+} = require('./emailNotifier');
 
-const wss = new WebSocket.Server({ port: 8989 });
-const onlineUsers = new Map(); // ws -> { userId, username, email }
+// Create HTTP server for verification endpoint
+const server = http.createServer((req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  
+  if (parsedUrl.pathname === '/verify') {
+    const token = parsedUrl.query.token;
+    
+    if (!token) {
+      res.writeHead(400, { 'Content-Type': 'text/html' });
+      res.end('<h1>Invalid verification link</h1>');
+      return;
+    }
+    
+    const result = verifyEmail(token);
+    
+    if (result.success) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+              .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+              h1 { color: #28a745; }
+              a { background: #FF6B35; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="box">
+              <h1>Email Verified!</h1>
+              <p>Your email has been successfully verified.</p>
+              <p>You can now login to the chat app.</p>
+              <a href="http://localhost:3000">Go to Chat App</a>
+            </div>
+          </body>
+        </html>
+      `);
+    } else {
+      res.writeHead(400, { 'Content-Type': 'text/html' });
+      res.end(`
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+              .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+              h1 { color: #dc3545; }
+            </style>
+          </head>
+          <body>
+            <div class="box">
+              <h1>Verification Failed</h1>
+              <p>${result.message}</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+  } else {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+});
+
+const wss = new WebSocket.Server({ server });
+const onlineUsers = new Map();
+const voiceRooms = new Map();
 const admins = new Set();
 const MAX_MESSAGES = 200;
-const ADMIN_PASSWORD = 'admin123'; // CHANGE THIS!
+const ADMIN_PASSWORD = 'admin123';
 
 let messages = loadMessages();
 
@@ -32,22 +102,27 @@ wss.on('connection', (ws) => {
       // User registration
       if (msg.type === 'register') {
         const result = await registerUser(msg.payload.username, msg.payload.email, msg.payload.password);
+        
+        if (result.success) {
+          await sendVerificationEmail(msg.payload.email, msg.payload.username, result.verificationToken);
+        }
+        
         ws.send(JSON.stringify({ type: 'register_response', payload: result }));
       }
       
-      // User login
+      // User login (simple - no 2FA)
       if (msg.type === 'login') {
         const result = await loginUser(msg.payload.email, msg.payload.password);
+        
         if (result.success) {
-          // Generate JWT token
           const token = jwt.sign(
             { userId: result.user.id, username: result.user.username, email: result.user.email },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '7d' }
           );
+          
           result.token = token;
           
-          // Add to online users
           onlineUsers.set(ws, {
             userId: result.user.id,
             username: result.user.username,
@@ -56,14 +131,13 @@ wss.on('connection', (ws) => {
           
           console.log('User logged in:', result.user.username);
           
-          // Send message history
           messages.forEach(m => {
             ws.send(JSON.stringify({ type: 'message', payload: m }));
           });
           
-          // Broadcast updated online users list
           broadcastOnlineUsers();
         }
+        
         ws.send(JSON.stringify({ type: 'login_response', payload: result }));
       }
       
@@ -100,14 +174,12 @@ wss.on('connection', (ws) => {
         
         saveMessages(messages);
         
-        // Broadcast to all online users
         wss.clients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ type: 'message', payload: newMsg }));
           }
         });
         
-        // Send email notifications to offline users
         const usersWithNotifications = getUsersWithNotifications();
         const offlineUsers = usersWithNotifications.filter(u => {
           return !Array.from(onlineUsers.values()).find(ou => ou.email === u.email);
@@ -118,7 +190,45 @@ wss.on('connection', (ws) => {
         }
       }
       
-      // Clear history (admin only)
+      // Voice channel join
+      if (msg.type === 'join_voice') {
+        const user = onlineUsers.get(ws);
+        if (user) {
+          voiceRooms.set(ws, { userId: user.userId, username: user.username });
+          console.log('User joined voice:', user.username);
+          broadcastVoiceUsers();
+        }
+      }
+      
+      // Voice channel leave
+      if (msg.type === 'leave_voice') {
+        const user = onlineUsers.get(ws);
+        if (user) {
+          voiceRooms.delete(ws);
+          console.log('User left voice:', user.username);
+          broadcastVoiceUsers();
+        }
+      }
+      
+      // WebRTC signaling for voice
+      if (msg.type === 'voice_signal') {
+        const fromUser = onlineUsers.get(ws);
+        
+        wss.clients.forEach(client => {
+          if (client !== ws && client.readyState === WebSocket.OPEN && voiceRooms.has(client)) {
+            client.send(JSON.stringify({
+              type: 'voice_signal',
+              payload: {
+                from: fromUser?.userId,
+                fromUsername: fromUser?.username,
+                signal: msg.payload.signal
+              }
+            }));
+          }
+        });
+      }
+      
+      // Clear history
       if (msg.type === 'clear_history') {
         if (admins.has(ws)) {
           messages = [];
@@ -143,7 +253,9 @@ wss.on('connection', (ws) => {
       console.log('User disconnected:', user.username);
       onlineUsers.delete(ws);
       admins.delete(ws);
+      voiceRooms.delete(ws);
       broadcastOnlineUsers();
+      broadcastVoiceUsers();
     }
   });
 });
@@ -158,3 +270,18 @@ function broadcastOnlineUsers() {
     }
   });
 }
+
+function broadcastVoiceUsers() {
+  const voiceUserList = Array.from(voiceRooms.values()).map(u => u.username);
+  console.log('Voice users:', voiceUserList);
+  
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ type: 'voice_users', payload: voiceUserList }));
+    }
+  });
+}
+
+server.listen(8989, () => {
+  console.log('HTTP and WebSocket server listening on port 8989');
+});
