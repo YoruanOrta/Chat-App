@@ -9,5 +9,16 @@
     "isVerified": true,
     "verificationToken": null,
     "avatar": "1759384415432-1759425423688.jpg"
+  },
+  {
+    "id": "1759430050712",
+    "username": "Yoruan",
+    "email": "nauroy71106@gmail.com",
+    "password": "$2b$10$XjqN3.w.NHGtVWDfLBjd2e.nrbhACXyublgA0e.fH4LlhmXyl3Sty",
+    "createdAt": "2025-10-02T18:34:10.712Z",
+    "notifications": true,
+    "isVerified": true,
+    "verificationToken": null,
+    "avatar": "1759430050712-1759430776464.jpeg"
   }
 ]

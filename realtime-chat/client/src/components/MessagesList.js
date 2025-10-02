@@ -7,10 +7,10 @@ const MessagesList = ({ messages }) => (
     <div className="messages-container">
       {messages.map(msg => (
         <Message
-          key={msg.id}
+          key={msg.id || msg.timestamp}
           message={msg.message}
           author={msg.author}
-          avatar={msg.authorAvatar}
+          authorAvatar={msg.authorAvatar}
         />
       ))}
     </div>

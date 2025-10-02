@@ -11,13 +11,21 @@ const AddMessage = ({ onSubmit }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
     <form className="add-message" onSubmit={handleSubmit}>
-      <input
-        type="text"
+      <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type your message..."
+        onKeyDown={handleKeyDown}
+        placeholder="Type your message... (Shift+Enter for new line)"
+        rows="1"
       />
       <button type="submit">Send</button>
     </form>

@@ -1,22 +1,45 @@
 import React from 'react';
 
-const generateAvatar = (username) => {
-  // Opciones de estilos: 'adventurer', 'avataaars', 'bottts', 'fun-emoji', 'lorelei', 'micah', 'miniavs', 'notionists', 'personas'
-  return `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${encodeURIComponent(username)}`;
-};
+const Message = ({ message, author, authorAvatar }) => {
+  console.log('Message props:', { author, authorAvatar, message }); // Debug
+  
+  const avatarUrl = authorAvatar 
+    ? `http://localhost:8989/uploads/avatars/${authorAvatar}`
+    : null;
 
-const Message = ({ message, author }) => (
-  <div className="message">
-    <div className="message-header">
-      <img 
-        src={generateAvatar(author)} 
-        alt={author} 
-        className="message-avatar"
-      />
-      <strong>{author}:</strong>
+  return (
+    <div className="message">
+      {avatarUrl ? (
+        <img 
+          src={avatarUrl} 
+          alt={author} 
+          className="message-avatar"
+          onError={(e) => {
+            console.error('Avatar failed to load:', avatarUrl);
+            e.target.onerror = null; // Prevent infinite loop
+            e.target.style.display = 'none';
+            // Create placeholder
+            if (!e.target.nextSibling || !e.target.nextSibling.classList.contains('message-avatar-placeholder')) {
+              const placeholder = document.createElement('div');
+              placeholder.className = 'message-avatar-placeholder';
+              placeholder.textContent = author.charAt(0).toUpperCase();
+              e.target.parentNode.insertBefore(placeholder, e.target.nextSibling);
+            }
+          }}
+        />
+      ) : (
+        <div className="message-avatar-placeholder">
+          {author.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <div className="message-body">
+        <div className="message-header">
+          <strong>{author}</strong>
+        </div>
+        <div className="message-content">{message}</div>
+      </div>
     </div>
-    <div className="message-content">{message}</div>
-  </div>
-);
+  );
+};
 
 export default Message;

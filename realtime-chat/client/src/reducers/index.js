@@ -3,7 +3,12 @@ import { MESSAGE_RECEIVED, USERS_LIST } from '../actions';
 
 const messages = (state = [], action) => {
   if (action.type === MESSAGE_RECEIVED) {
-    return [...state, { id: action.id, message: action.message, author: action.author }];
+    return [...state, { 
+      id: action.id, 
+      message: action.message, 
+      author: action.author,
+      authorAvatar: action.authorAvatar  // AGREGAR ESTO
+    }];
   }
   if (action.type === 'CLEAR_ALL_MESSAGES') {
     return [];

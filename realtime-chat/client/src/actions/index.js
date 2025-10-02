@@ -14,11 +14,12 @@ export const addMessage = (message, author) => ({
   author
 });
 
-export const messageReceived = (message, author) => ({
+export const messageReceived = (message, author, authorAvatar) => ({
   type: MESSAGE_RECEIVED,
   id: nextMessageId++,
   message,
-  author
+  author,
+  authorAvatar  // AGREGAR ESTO
 });
 
 export const addUser = (name) => ({

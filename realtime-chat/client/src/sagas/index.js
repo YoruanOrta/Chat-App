@@ -28,7 +28,11 @@ function connectSocket() {
     const data = JSON.parse(e.data);
     
     if (data.type === 'message') {
-      dispatch(messageReceived(data.payload.message, data.payload.author));
+      dispatch(messageReceived(
+        data.payload.message, 
+        data.payload.author, 
+        data.payload.authorAvatar
+      ));
     }
     if (data.type === 'users') {
       dispatch(usersList(data.payload));
