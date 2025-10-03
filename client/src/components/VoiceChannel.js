@@ -40,7 +40,6 @@ const VoiceChannel = ({ username }) => {
       });
     };
 
-    // Get WebSocket from window (set by sagas)
     const checkSocket = setInterval(() => {
       if (window.chatWebSocket) {
         wsRef.current = window.chatWebSocket;
@@ -53,7 +52,6 @@ const VoiceChannel = ({ username }) => {
       clearInterval(checkSocket);
       leaveVoice();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const joinVoice = async () => {
@@ -69,10 +67,8 @@ const VoiceChannel = ({ username }) => {
       streamRef.current = stream;
       setInVoice(true);
       
-      // Setup audio detection
       setupAudioDetection(stream);
       
-      // Tell server we joined
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'join_voice' }));
       }
@@ -121,18 +117,18 @@ const VoiceChannel = ({ username }) => {
   const createPeer = (fromUser, initiator, stream) => {
     console.log(`🔗 Creating peer for ${fromUser}, initiator: ${initiator}`);
     
+    // ⚠️ CAMBIO CRÍTICO: "config" NO "peerConfig"
     const peer = new Peer({ 
       initiator, 
       stream, 
       trickle: true,
-      config: {
+      config: {  // <- ERA "peerConfig" (INCORRECTO), ahora es "config"
         iceServers: [
-          // STUN servers para descubrir IPs públicas
+          // STUN servers
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun2.l.google.com:19302' },
-          
-          // TURN servers (relay) para NAT traversal en producción
+          // TURN servers para NAT traversal en producción
           {
             urls: 'turn:openrelay.metered.ca:80',
             username: 'openrelayproject',
@@ -148,8 +144,7 @@ const VoiceChannel = ({ username }) => {
             username: 'openrelayproject',
             credential: 'openrelayproject'
           }
-        ],
-        iceTransportPolicy: 'all' // Permite usar tanto STUN como TURN
+        ]
       }
     });
     
@@ -247,7 +242,6 @@ const VoiceChannel = ({ username }) => {
     }
   };
 
-  // Create peer connections for new users
   useEffect(() => {
     if (!inVoice || !streamRef.current) return;
     
@@ -262,7 +256,6 @@ const VoiceChannel = ({ username }) => {
       }
     });
     
-    // Clean up disconnected peers
     Object.keys(peersRef.current).forEach(userId => {
       const stillConnected = voiceUsers.some(u => u === userId);
       if (!stillConnected && peersRef.current[userId]) {
