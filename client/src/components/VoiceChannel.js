@@ -28,7 +28,6 @@ const VoiceChannel = ({ username }) => {
           
           if (data.type === 'voice_signal') {
             console.log('📨 Received voice signal');
-            // REMOVED the inVoice check - always handle signals if we have a stream
             if (streamRef.current) {
               handleSignal(data.payload);
             } else {
@@ -125,12 +124,32 @@ const VoiceChannel = ({ username }) => {
     const peer = new Peer({ 
       initiator, 
       stream, 
-      trickle: true, // CHANGED TO TRUE
-      peerConfig: {
+      trickle: true,
+      config: {
         iceServers: [
+          // STUN servers para descubrir IPs públicas
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          
+          // TURN servers (relay) para NAT traversal en producción
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
+        ],
+        iceTransportPolicy: 'all' // Permite usar tanto STUN como TURN
       }
     });
     
@@ -194,7 +213,7 @@ const VoiceChannel = ({ username }) => {
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.3; // More responsive
+      analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
       
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -205,7 +224,6 @@ const VoiceChannel = ({ username }) => {
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
         
-        // Lower threshold and check if not muted
         if (average > 15 && !isMuted) {
           setSpeaking(prev => {
             const newSet = new Set(prev);
@@ -230,31 +248,30 @@ const VoiceChannel = ({ username }) => {
   };
 
   // Create peer connections for new users
-useEffect(() => {
-  if (!inVoice || !streamRef.current) return;
-  
-  console.log('Voice users changed:', voiceUsers);
-  
-  voiceUsers.forEach(user => {
-    if (user !== username && !peersRef.current[user]) {
-      // Only initiate if our username is alphabetically first (prevents double initiation)
-      const shouldInitiate = username < user;
-      console.log(`🔗 Creating peer for ${user}, shouldInitiate: ${shouldInitiate}`);
-      const peer = createPeer(user, shouldInitiate, streamRef.current);
-      peersRef.current[user] = peer;
-    }
-  });
-  
-  // Clean up disconnected peers
-  Object.keys(peersRef.current).forEach(userId => {
-    const stillConnected = voiceUsers.some(u => u === userId);
-    if (!stillConnected && peersRef.current[userId]) {
-      console.log('🗑️ Cleaning up peer:', userId);
-      peersRef.current[userId].destroy();
-      delete peersRef.current[userId];
-    }
-  });
-}, [voiceUsers, inVoice, username]);
+  useEffect(() => {
+    if (!inVoice || !streamRef.current) return;
+    
+    console.log('Voice users changed:', voiceUsers);
+    
+    voiceUsers.forEach(user => {
+      if (user !== username && !peersRef.current[user]) {
+        const shouldInitiate = username < user;
+        console.log(`🔗 Creating peer for ${user}, shouldInitiate: ${shouldInitiate}`);
+        const peer = createPeer(user, shouldInitiate, streamRef.current);
+        peersRef.current[user] = peer;
+      }
+    });
+    
+    // Clean up disconnected peers
+    Object.keys(peersRef.current).forEach(userId => {
+      const stillConnected = voiceUsers.some(u => u === userId);
+      if (!stillConnected && peersRef.current[userId]) {
+        console.log('🗑️ Cleaning up peer:', userId);
+        peersRef.current[userId].destroy();
+        delete peersRef.current[userId];
+      }
+    });
+  }, [voiceUsers, inVoice, username]);
 
   return (
     <div className="voice-channel">
@@ -288,11 +305,11 @@ useEffect(() => {
           <ul>
             {voiceUsers.map((user, index) => (
               <li key={index} className={speaking.has(user) ? 'speaking' : ''}>
-              <span className="voice-indicator">
-                {user === username && isMuted ? '🔇' : speaking.has(user) ? '🔊' : '🎤'}
-              </span>
-              {user}
-            </li>
+                <span className="voice-indicator">
+                  {user === username && isMuted ? '🔇' : speaking.has(user) ? '🔊' : '🎤'}
+                </span>
+                {user}
+              </li>
             ))}
           </ul>
         )}
