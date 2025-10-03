@@ -59,6 +59,7 @@ const MessagesList = ({ messages }) => {
             author={msg.author}
             authorAvatar={msg.authorAvatar}
             file={msg.file}
+            timestamp={msg.timestamp}
           />
         ))}
         <div ref={messagesEndRef} />

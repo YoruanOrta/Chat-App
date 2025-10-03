@@ -164,20 +164,17 @@ function App() {
         </div>
         <div className="user-info">
           <div className="user-avatar-section" onClick={() => setShowSettings(true)}>
-          import { config } from './config';  // ADD THIS AT TOP
-
-// Then update the avatar URL:
-{user.avatar ? (
-  <img 
-    src={`${config.API_URL}/uploads/avatars/${user.avatar}`} 
-    alt={user.username} 
-    className="user-avatar-header"
-  />
-) : (
-  <div className="user-avatar-placeholder">
-    {user.username.charAt(0).toUpperCase()}
-  </div>
-)}
+            {user.avatar ? (
+              <img 
+                src={`${config.API_URL}/uploads/avatars/${user.avatar}`} 
+                alt={user.username} 
+                className="user-avatar-header"
+              />
+            ) : (
+              <div className="user-avatar-placeholder">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
             <span className="username-display">{user.username}</span>
           </div>
           <button className="settings-btn" onClick={() => setShowSettings(true)}>

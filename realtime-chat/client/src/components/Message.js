@@ -1,7 +1,7 @@
 import React from 'react';
 import { config } from '../config';
 
-const Message = ({ message, author, authorAvatar, file }) => {
+const Message = ({ message, author, authorAvatar, file, timestamp }) => {
   const avatarUrl = authorAvatar 
     ? `${config.API_URL}/uploads/avatars/${authorAvatar}`
     : null;
@@ -11,12 +11,13 @@ const Message = ({ message, author, authorAvatar, file }) => {
   };
 
   const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
+    if (!bytes || bytes < 1024) return (bytes || 0) + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const getFileIcon = (fileType) => {
+    if (!fileType) return '📎';  // DEFAULT ICON
     if (fileType.startsWith('image/')) return '🖼️';
     if (fileType.startsWith('video/')) return '🎥';
     if (fileType.startsWith('audio/')) return '🎵';
@@ -26,7 +27,18 @@ const Message = ({ message, author, authorAvatar, file }) => {
     return '📎';
   };
 
-  const isImage = file && file.type.startsWith('image/');
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const isImage = file && file.type && file.type.startsWith('image/');  // ADD NULL CHECKS
   const fileUrl = file ? `${config.API_URL}${file.path}` : null;
 
   return (
@@ -44,19 +56,24 @@ const Message = ({ message, author, authorAvatar, file }) => {
       <div className="message-body">
         <div className="message-header">
           <strong>{author}</strong>
+          {timestamp && (
+            <span className="message-time">
+              {formatTime(timestamp)}
+            </span>
+          )}
         </div>
         
         {message && (
           <div className="message-content">{message}</div>
         )}
         
-        {file && (
+        {file && file.originalName && file.path && (
           <div className="message-file">
             {isImage ? (
               <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="message-image-link">
                 <img 
                   src={fileUrl} 
-                  alt={file.originalName}
+                  alt={file.originalName || 'Image'}
                   className="message-image"
                   loading="lazy"
                 />
@@ -71,7 +88,7 @@ const Message = ({ message, author, authorAvatar, file }) => {
               >
                 <span className="file-icon">{getFileIcon(file.type)}</span>
                 <div className="file-info">
-                  <span className="file-name">{file.originalName}</span>
+                  <span className="file-name">{file.originalName || 'Unknown file'}</span>
                   <span className="file-size">{formatFileSize(file.size)}</span>
                 </div>
                 <span className="download-icon">⬇️</span>

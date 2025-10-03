@@ -4,6 +4,7 @@ const http = require('http');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 require('dotenv').config();
 
 const { 
@@ -21,112 +22,98 @@ const {
 } = require('./database');
 const { 
   sendVerificationEmail,
-  sendVoiceChannelNotification   // ADD THIS INSTEAD
+  sendVoiceChannelNotification
 } = require('./emailNotifier');
 
-// Create HTTP server for verification endpoint and file serving
-const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+// Create Express app
+const app = express();
+
+// Middleware para JSON
+app.use(express.json());
+
+// Servir archivos estáticos en producción
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+}
+
+// Email verification endpoint
+app.get('/verify', (req, res) => {
+  const token = req.query.token;
   
-  // Email verification endpoint
-  if (parsedUrl.pathname === '/verify') {
-    const token = parsedUrl.query.token;
-    
-    if (!token) {
-      res.writeHead(400, { 'Content-Type': 'text/html' });
-      res.end('<h1>Invalid verification link</h1>');
-      return;
-    }
-    
-    const result = verifyEmail(token);
-    
-    if (result.success) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(`
-        <html>
-          <head>
-            <style>
-              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%); }
-              .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-              h1 { color: #8a2be2; }
-              a { background: #8a2be2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="box">
-              <h1>Email Verified!</h1>
-              <p>Your email has been successfully verified.</p>
-              <p>You can now login to the chat app.</p>
-              <a href="http://localhost:3000">Go to Chat App</a>
-            </div>
-          </body>
-        </html>
-      `);
-    } else {
-      res.writeHead(400, { 'Content-Type': 'text/html' });
-      res.end(`
-        <html>
-          <head>
-            <style>
-              body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%); }
-              .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-              h1 { color: #dc3545; }
-            </style>
-          </head>
-          <body>
-            <div class="box">
-              <h1>Verification Failed</h1>
-              <p>${result.message}</p>
-            </div>
-          </body>
-        </html>
-      `);
-    }
+  if (!token) {
+    res.status(400).send('<h1>Invalid verification link</h1>');
     return;
   }
   
-  // Serve uploaded files (avatars and chat files)
-  if (parsedUrl.pathname.startsWith('/uploads/')) {
-    const filePath = path.join(__dirname, parsedUrl.pathname);
-    
-    if (fs.existsSync(filePath)) {
-      const ext = path.extname(filePath).toLowerCase();
-      const mimeTypes = {
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png',
-        '.gif': 'image/gif',
-        '.webp': 'image/webp',
-        '.pdf': 'application/pdf',
-        '.txt': 'text/plain',
-        '.zip': 'application/zip'
-      };
-      
-      const contentType = mimeTypes[ext] || 'application/octet-stream';
-      
-      res.writeHead(200, { 'Content-Type': contentType });
-      fs.createReadStream(filePath).pipe(res);
-    } else {
-      res.writeHead(404);
-      res.end('File not found');
-    }
-    return;
-  }
+  const result = verifyEmail(token);
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
   
-  res.writeHead(404);
-  res.end('Not found');
+  if (result.success) {
+    res.send(`
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%); }
+            .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+            h1 { color: #8a2be2; }
+            a { background: #8a2be2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h1>Email Verified!</h1>
+            <p>Your email has been successfully verified.</p>
+            <p>You can now login to the chat app.</p>
+            <a href="${clientUrl}">Go to Chat App</a>
+          </div>
+        </body>
+      </html>
+    `);
+  } else {
+    res.status(400).send(`
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #4a2c6b 100%); }
+            .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+            h1 { color: #dc3545; }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h1>Verification Failed</h1>
+            <p>${result.message}</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
 });
+
+// Serve uploaded files (avatars and chat files)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Catch all handler para React en producción
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
+
+// Create HTTP server
+const server = http.createServer(app);
 
 const wss = new WebSocket.Server({ server });
 const onlineUsers = new Map();
 const voiceRooms = new Map();
 const admins = new Set();
 const MAX_MESSAGES = 200;
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
 let messages = loadMessages();
 
-console.log('Server running on port 8989');
+const PORT = process.env.PORT || 8989;
+console.log(`Server running on port ${PORT}`);
 console.log('Loaded', messages.length, 'messages');
 
 wss.on('connection', (ws) => {
@@ -360,8 +347,6 @@ wss.on('connection', (ws) => {
             client.send(JSON.stringify({ type: 'message', payload: newMsg }));
           }
         });
-        
-       
       }
       
       // Typing indicators
@@ -396,22 +381,22 @@ wss.on('connection', (ws) => {
       // Voice channel join
       if (msg.type === 'join_voice') {
         const user = onlineUsers.get(ws);
-  if (user) {
-    voiceRooms.set(ws, { userId: user.userId, username: user.username });
-    console.log('User joined voice:', user.username);
-    broadcastVoiceUsers();
-    
-    // NEW: Send email notifications to offline users
-    const usersWithNotifications = getUsersWithNotifications();
-    const offlineUsers = usersWithNotifications.filter(u => {
-      return !Array.from(onlineUsers.values()).find(ou => ou.email === u.email);
-    });
-    
-    if (offlineUsers.length > 0) {
-      sendVoiceChannelNotification(offlineUsers, user.username);
-    }
-  }
-}
+        if (user) {
+          voiceRooms.set(ws, { userId: user.userId, username: user.username });
+          console.log('User joined voice:', user.username);
+          broadcastVoiceUsers();
+          
+          // Send email notifications to offline users
+          const usersWithNotifications = getUsersWithNotifications();
+          const offlineUsers = usersWithNotifications.filter(u => {
+            return !Array.from(onlineUsers.values()).find(ou => ou.email === u.email);
+          });
+          
+          if (offlineUsers.length > 0) {
+            sendVoiceChannelNotification(offlineUsers, user.username);
+          }
+        }
+      }
       
       // Voice channel leave
       if (msg.type === 'leave_voice') {
@@ -498,6 +483,6 @@ function broadcastVoiceUsers() {
   });
 }
 
-server.listen(8989, () => {
-  console.log('HTTP and WebSocket server listening on port 8989');
+server.listen(PORT, () => {
+  console.log(`HTTP and WebSocket server listening on port ${PORT}`);
 });

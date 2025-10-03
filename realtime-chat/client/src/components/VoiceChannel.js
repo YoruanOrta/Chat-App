@@ -126,7 +126,7 @@ const VoiceChannel = ({ username }) => {
       initiator, 
       stream, 
       trickle: true, // CHANGED TO TRUE
-      config: {
+      peerConfig: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' }

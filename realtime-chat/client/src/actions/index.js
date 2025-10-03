@@ -11,13 +11,14 @@ export const addMessage = (message, author) => ({
   author
 });
 
-export const messageReceived = (message, author, authorAvatar, file) => ({
+export const messageReceived = (message, author, authorAvatar, timestamp, file) => ({
   type: MESSAGE_RECEIVED,
   id: messageId++,
   message,
   author,
   authorAvatar,
-  file  // ADD THIS!!!
+  file,
+  timestamp: timestamp || Date.now()
 });
 
 export const usersList = (users) => ({

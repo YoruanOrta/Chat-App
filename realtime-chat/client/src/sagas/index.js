@@ -1,7 +1,6 @@
 import { takeEvery } from 'redux-saga/effects';
 import { ADD_MESSAGE, messageReceived, usersList } from '../actions';
-import { config } from '../config';  // ADD THIS LINE
-
+import { config } from '../config';
 let ws = null;
 let dispatch = null;
 let isConnected = false;
@@ -33,6 +32,7 @@ function connectSocket() {
         data.payload.message, 
         data.payload.author, 
         data.payload.authorAvatar,
+        data.payload.timestamp,
         data.payload.file
       ));
     }

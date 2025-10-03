@@ -8,7 +8,8 @@ const messages = (state = [], action) => {
       message: action.message, 
       author: action.author,
       authorAvatar: action.authorAvatar,
-      file: action.file  // ADD THIS LINE!!!
+      file: action.file,
+      timestamp: action.timestamp
     }];
   }
   if (action.type === 'CLEAR_ALL_MESSAGES') {
